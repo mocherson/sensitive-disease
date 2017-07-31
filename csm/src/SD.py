@@ -11,6 +11,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import recall_score,precision_score,f1_score
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import chi2, f_classif, mutual_info_classif
+import matplotlib.pyplot as plt
 
 def to_num(s):
     if isinstance(s,float):
@@ -36,14 +37,12 @@ def get_nm_set(sd):
     sd.med_nm_set=set(pd.Series.from_csv(join(sd.path,'med{}_nmset_{}.csv'.format(sd.disease,sd.thr))).index)
 
 class Sens_disease:
-    def __init__(self,disease,ctr='nonSD5pct',ctr_thr=50,thr=50,ifload=True,savepath='/home/data/sensitive_disease/csm/'):
+    def __init__(self,disease,ctr='nonSD5pct',ctr_thr=50,thr=50,savepath='/home/data/sensitive_disease/csm/'):
         self.disease=disease
         self.ctr=ctr
         self.thr=thr
         self.ctr_thr=ctr_thr
         self.path=savepath
-        if ifload:
-            self.load()
         
     def load(self):
         disease=self.disease
@@ -124,10 +123,18 @@ class Sens_disease:
             return self.med_nm_map[norm_name]
         else:
             return norm_name
+        
+    def generate_id_mapping(self):
+        self.lab_data.groupby(['mrd_lab_id'])['lab_nm'].agg(lambda x: min(x,key=len)).to_csv( \
+                    join(path,'mapping/{}lab_id_mapping.csv'.format(self.disease)))
+        self.pr_data.groupby(['order_cpt_cd'])['order_nm'].agg(lambda x: min(x,key=len)).to_csv( \
+                    join(path,'mapping/{}procedure_id_mapping.csv'.format(self.disease)))
+        self.med_data.groupby(['mrd_med_id'])['generic_nm'].agg(lambda x: min(x,key=len)).to_csv( \
+                    join(path,'mapping/{}med_id_mapping.csv'.format(self.disease)))
 
-    def generate_nm(self,ps=5000,seed=0,isctr=False):
+    def generate_nm(self,isctr=False):
         disease=self.disease
-        self.get_persons(psnum=ps,rs=seed)
+#        self.get_persons(psnum=ps,rs=seed)
         
         case_lab_id_mapping=pd.Series.from_csv(join(self.path,'mapping/{}lab_id_mapping.csv'.format(self.disease)))
         ctr_lab_id_mapping=pd.Series.from_csv(join(self.path,'mapping/{}lab_id_mapping.csv'.format(self.ctr)))
@@ -155,8 +162,8 @@ class Sens_disease:
         self.lab_data.loc[:,'lab_nm_alt']=self.lab_data['mrd_lab_id'].apply(  \
                     lambda x: self.normalize_lab_nm(self.lab_id_map[x]))
         self.lab_ups=self.lab_data.groupby('lab_nm_alt')['person_id'].nunique()
-        self.lab_nm_set=set(self.lab_ups.index[self.lab_ups>self.thr])
-        self.lab_ups[self.lab_ups>self.thr].to_csv(join(self.path,'lab{}_nmset_{}.csv'.format(self.disease,self.thr)))
+        self.lab_nm_set=self.lab_ups.index[self.lab_ups>self.thr]
+        self.lab_ups[self.lab_ups>self.thr].to_csv(join(self.path,'nmset/lab{}_nmset_{}.csv'.format(self.disease,self.thr)))
 
         ### for pr_data, procedure to use
 #        if self.pr_data.order_cpt_cd.isnull().any():
@@ -168,8 +175,8 @@ class Sens_disease:
         self.pr_data.loc[:,'order_nm_alt']=self.pr_data['order_cpt_cd'].apply(  \
                     lambda x: self.normalize_pr_nm(self.pr_id_map[x]))
         self.pr_ups=self.pr_data.groupby('order_nm_alt')['person_id'].nunique()
-        self.pr_nm_set=set(self.pr_ups.index[self.pr_ups>self.thr])
-        self.pr_ups[self.pr_ups>self.thr].to_csv( join(self.path,'pr{}_nmset_{}.csv'.format(self.disease,self.thr)))
+        self.pr_nm_set=self.pr_ups.index[self.pr_ups>self.thr]
+        self.pr_ups[self.pr_ups>self.thr].to_csv( join(self.path,'nmset/pr{}_nmset_{}.csv'.format(self.disease,self.thr)))
 
         ### for med_data, med to use
 #        if self.med_data.mrd_med_id.isnull().any():
@@ -183,17 +190,18 @@ class Sens_disease:
         self.med_data.loc[:,'generic_nm_alt']=self.med_data['mrd_med_id'].apply(  \
                 lambda x:self.normalize_med_nm(self.med_id_map[x]))
         self.med_ups=self.med_data.groupby('generic_nm_alt')['person_id'].nunique()
-        self.med_nm_set=set(self.med_ups.index[self.med_ups>self.thr])
-        self.med_ups[self.med_ups>self.thr].to_csv( join(self.path,'med{}_nmset_{}.csv'.format(self.disease,self.thr)))
+        self.med_nm_set=self.med_ups.index[self.med_ups>self.thr]
+        self.med_ups[self.med_ups>self.thr].to_csv( join(self.path,'nmset/med{}_nmset_{}.csv'.format(self.disease,self.thr)))
         
-    def get_nm_set(self):
-        self.lab_nm_set=set(pd.Series.from_csv(join(self.path,'lab{}_nmset_{}.csv'.format(self.disease,self.thr))).index)
-        self.pr_nm_set=set(pd.Series.from_csv(join(self.path,'pr{}_nmset_{}.csv'.format(self.disease,self.thr))).index)
-        self.med_nm_set=set(pd.Series.from_csv(join(self.path,'med{}_nmset_{}.csv'.format(self.disease,self.thr))).index)
+    def get_nm_set(self, iforg=False):
+        suff='_org' if iforg else ''
+        self.lab_nm_set=pd.Series.from_csv(join(self.path,'nmset/lab{}_nmset_{}{}.csv'.format(self.disease,self.thr,suff))).index
+        self.pr_nm_set=pd.Series.from_csv(join(self.path,'nmset/pr{}_nmset_{}{}.csv'.format(self.disease,self.thr,suff))).index
+        self.med_nm_set=pd.Series.from_csv(join(self.path,'nmset/med{}_nmset_{}{}.csv'.format(self.disease,self.thr,suff))).index
         
     def generate_feamat(self):
         # lab feature
-        lab_idnm_ctr=pd.Series.from_csv(join(self.path,'lab{}_nmset_{}.csv'.format(self.ctr,self.ctr_thr)))
+        lab_idnm_ctr=pd.Series.from_csv(join(self.path,'nmset/lab{}_nmset_{}.csv'.format(self.ctr,self.ctr_thr)))
         lab_is_use=self.lab_data.lab_nm_alt.isin(self.lab_nm_set.union(set(lab_idnm_ctr.index)))
         lab_use=self.lab_data.loc[lab_is_use,['person_id','lab_nm_alt','low','high']]
         self.lab_fea=lab_use.groupby(['person_id','lab_nm_alt']).any().unstack(fill_value=0).apply(pd.to_numeric)
@@ -201,7 +209,7 @@ class Sens_disease:
         self.lab_fea.to_pickle(join(self.path,'fea_mat/lab{}_fea_{}_{}.pkl'.format(self.disease,self.ctr,self.thr)))
 
         #pr feature
-        pr_idnm_ctr=pd.Series.from_csv(join(self.path,'pr{}_nmset_{}.csv'.format(self.ctr,self.ctr_thr)))
+        pr_idnm_ctr=pd.Series.from_csv(join(self.path,'nmset/pr{}_nmset_{}.csv'.format(self.ctr,self.ctr_thr)))
         pr_is_use=self.pr_data.order_nm_alt.isin(self.pr_nm_set.union(set(pr_idnm_ctr.index)))
         pr_use=self.pr_data.loc[pr_is_use,['person_id','order_nm_alt']]
         self.pr_fea=pr_use.groupby(['person_id','order_nm_alt']).agg(lambda x: 1).unstack(fill_value=0)
@@ -209,7 +217,7 @@ class Sens_disease:
         self.pr_fea.to_pickle(join(self.path,'fea_mat/pr{}_fea_{}_{}.pkl'.format(self.disease,self.ctr,self.thr)))
 
         #med feature
-        med_idnm_ctr=pd.Series.from_csv(join(self.path,'med{}_nmset_{}.csv'.format(self.ctr,self.ctr_thr)))
+        med_idnm_ctr=pd.Series.from_csv(join(self.path,'nmset/med{}_nmset_{}.csv'.format(self.ctr,self.ctr_thr)))
         med_is_use=self.med_data.generic_nm_alt.isin(self.med_nm_set.union(set(med_idnm_ctr.index)))
         med_use=self.med_data.loc[med_is_use,['person_id','generic_nm_alt']]
         self.med_fea=med_use.groupby(['person_id','generic_nm_alt']).agg(lambda x: 1).unstack(fill_value=0)
@@ -229,15 +237,40 @@ class Sens_disease:
         self.pr_fea=pd.read_pickle(join(self.path,'fea_mat/pr{}_fea_{}_{}.pkl'.format(self.disease,self.ctr,self.thr)))
         self.med_fea=pd.read_pickle(join(self.path,'fea_mat/med{}_fea_{}_{}.pkl'.format(self.disease,self.ctr,self.thr)))
         self.curfea=pd.read_pickle(join(self.path,'fea_mat/fea{}_{}_{}.pkl'.format(self.disease,self.ctr,self.thr)))
+        
+    def part_feamat(self,feaset='union',iforg=False):
+        self.total_feamat(iforg)
+        suff='_org' if iforg else ''
+        ctr_labnm_set=pd.Series.from_csv(join(self.path,'nmset/lab{}_nmset_{}{}.csv'.format(self.ctr,self.ctr_thr,suff))).index
+        ctr_prnm_set=pd.Series.from_csv(join(self.path,'nmset/pr{}_nmset_{}{}.csv'.format(self.ctr,self.ctr_thr,suff))).index
+        ctr_mednm_set=pd.Series.from_csv(join(self.path,'nmset/med{}_nmset_{}{}.csv'.format(self.ctr,self.ctr_thr,suff))).index
+        curfeaset=('Lab_high_'+self.lab_nm_set)|('Lab_low_'+self.lab_nm_set)|('Procedure_'+self.pr_nm_set)|('Med_'+self.med_nm_set)
+        ctrfeaset=('Lab_high_'+ctr_labnm_set)|('Lab_low_'+ctr_labnm_set)|('Procedure_'+ctr_prnm_set)|('Med_'+ctr_mednm_set)
+        if feaset=='control':
+            feaset=ctrfeaset
+        elif feaset=='union':
+            feaset=curfeaset | ctrfeaset
+        elif feaset=='diff':
+            feaset=ctrfeaset.difference (curfeaset)
+        elif feaset=='intersect':
+            feaset=ctrfeaset & curfeaset
+        elif feaset=='case':
+            feaset=curfeaset
 
-    def mergectr(self):
-        ctr_fea=pd.read_pickle(join(self.path,'fea_mat/fea{}_{}_{}.pkl'.format(self.ctr,self.disease,self.ctr_thr)))
-        self.curfea=pd.read_pickle(join(self.path,'fea_mat/fea{}_{}_{}.pkl'.format(self.disease,self.ctr,self.thr)))
+        self.X=self.fea_mat[feaset].as_matrix()
+
+    def total_feamat(self,iforg=False):
+        if iforg:
+            ctr_fea=pd.DataFrame.from_csv(join(self.path,'fea_mat/fea{}_{}_org.csv'.format(self.ctr,self.ctr_thr)))
+            self.curfea=pd.DataFrame.from_csv(join(self.path,'fea_mat/fea{}_{}_org.csv'.format(self.disease,self.thr)))
+        else:
+            ctr_fea=pd.read_pickle(join(self.path,'fea_mat/fea{}_{}_{}.pkl'.format(self.ctr,self.disease,self.ctr_thr)))
+            self.curfea=pd.read_pickle(join(self.path,'fea_mat/fea{}_{}_{}.pkl'.format(self.disease,self.ctr,self.thr)))
         self.fea_mat=pd.concat([self.curfea,ctr_fea]).fillna(value=0)
         self.X=self.fea_mat.as_matrix()
         self.y=np.concatenate((np.ones(self.curfea.shape[0]),np.zeros(ctr_fea.shape[0])))
         
-    def classify_LR(self,allk=[0,10],usebest=False):
+    def classify_LR(self,allk=[0,10,20,30,40,50,100,200,300,400,500,600,700,800,900,1000],usebest=False,svtype='union_unify'):
         self.r=[]
         for k in allk:
             if usebest:
@@ -266,16 +299,65 @@ class Sens_disease:
 
             result=[np.mean(prec),np.mean(rec),np.mean(f1),np.mean(auc)]
             self.r.append((result,prec,rec,f1,auc))
-            save_obj(self.r,'{}_{}result'.format(self.disease,self.ctr))
+            save_obj(self.r,join(self.path,'results/{}_{}_{}'.format(self.disease,self.ctr,svtype)))
         
     def get_fea_sc(self,score_func=chi2):
-        sc,pv=score_func(self.X,self.y)
+        score_func_ret=score_func(self.X,self.y)
+        sc=score_func_ret[0] if isinstance(score_func_ret, (list, tuple)) else score_func_ret
         sc[np.isnan(sc)] = 0
         self.idx=np.argsort(sc)[::-1]
         self.sc=sc[self.idx]
         
-    
+    def org_nm_set(self):
+        self.lab_ups=self.lab_data.groupby('lab_nm')['person_id'].nunique()
+        self.lab_nm_set=self.lab_ups.index[self.lab_ups>self.thr]
+        self.lab_ups[self.lab_ups>self.thr].to_csv(join(self.path,'nmset/lab{}_nmset_{}_org.csv'.format(self.disease,self.thr)))
         
+        self.pr_ups=self.pr_data.groupby('order_nm')['person_id'].nunique()
+        self.pr_nm_set=self.pr_ups.index[self.pr_ups>self.thr]
+        self.pr_ups[self.pr_ups>self.thr].to_csv(join(self.path,'nmset/pr{}_nmset_{}_org.csv'.format(self.disease,self.thr)))
+        
+        self.med_ups=self.med_data.groupby('generic_nm')['person_id'].nunique()
+        self.med_nm_set=self.med_ups.index[self.med_ups>self.thr]
+        self.med_ups[self.med_ups>self.thr].to_csv(join(self.path,'nmset/med{}_nmset_{}_org.csv'.format(self.disease,self.thr)))
+
+    def entire_feamat(self,iforg=False):
+        suff,labnm,prnm,mednm=('_org','lab_nm','order_nm','generic_nm') if iforg else ('','lab_nm_alt','order_nm_alt','generic_nm_alt')
+        self.lab_fea=self.lab_data.groupby(['person_id',labnm])['high','low'].any().unstack(fill_value=0).apply(pd.to_numeric)
+        self.pr_fea=self.pr_data.groupby(['person_id',prnm]).apply(lambda x: 1).unstack(fill_value=0)
+        self.med_fea=self.med_data.groupby(['person_id',mednm]).apply(lambda x: 1).unstack(fill_value=0)
+        
+        self.lab_fea.columns = ['Lab_'+'_'.join(col).strip() for col in self.lab_fea.columns.values]
+        self.pr_fea.columns='Procedure_'+self.pr_fea.columns.values
+        self.med_fea.columns='Med_'+self.med_fea.columns.values
+
+        self.curfea = pd.concat([self.lab_fea, self.pr_fea, self.med_fea], axis=1).fillna(value=0)
+        self.curfea.to_csv(join(self.path,'fea_mat/fea{}_{}{}.csv'.format(self.disease,self.thr,suff)))
+#        self.curfea.to_pickle(join(self.path,'fea_mat/fea{}_{}_org.pkl'.format(self.disease,self.thr)))
+        
+    def allrun(self,ps=5000,s=0,isctr=False,feaset='union',iforg=False,score_func=chi2):
+        self.load()
+        self.get_persons(psnum=ps,rs=s)
+        if iforg:
+            svtype=str(feaset)+'_org'
+            self.org_nm_set()
+        else:
+            svtype=str(feaset)+'_unify'
+            self.generate_nm(isctr=isctr)
+            
+        self.entire_feamat(iforg=iforg)
+        self.part_feamat(feaset=feaset,iforg=iforg)
+        self.get_fea_sc(score_func=score_func)
+        self.classify_LR(svtype=svtype)
+        
+    def midrun(self,feaset='union',iforg=False,score_func=chi2):
+        svtype=str(feaset)+'_org' if iforg else str(feaset)+'_unify'
+        self.get_nm_set(iforg=iforg)
+        self.part_feamat(feaset=feaset,iforg=iforg)
+        self.get_fea_sc(score_func=score_func)
+        self.classify_LR(svtype=svtype)
+        
+
         
         
         
