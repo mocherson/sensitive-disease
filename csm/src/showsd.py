@@ -12,97 +12,145 @@ def load_obj(name ):
     with open( name , 'rb') as f:
         return pk.load(f)
     
-path='/home/data/sensitive_disease/csm/results'
+path='/home/data/sensitive_disease/csm/'
 
 allk=[0,10,20,30,40,50,100,200,300,400,500,600,700,800,900,1000]
 index=['All']+['Excl '+str(x)+' best' for x in allk[1:]]
 columns=['Precision','Recall','F-measure','AUC']
-cases=[311,632,654,644,658,616,303,655,623,661,765,608,646,652]
+# cases=[311,632,654,644,658,616,303,655,623,661,765,608,646,652,257,663,300,296,659]
+cases=[257, 294, 296, 300, 303, 305, 307, 309, 311, 607, 608, 616, 623, 626, 628, 632, 640, 642, 644, 646, 648, 650, 652, 654, 655, 656, 658, 659, 661, 663, 664, 669, 765, 770, 774, 779]
 
-def plotsd(case,sc_func='chi2'):
-    pdf=PdfPages(join(path,sc_func,'fig_{}.pdf'.format(case)))
+metric=['Precision','Recall','F-measure','AUC']
 
-    prec=np.zeros((len(allk),2))
-    rec=np.zeros((len(allk),2))
-    f1=np.zeros((len(allk),2))
-    auc=np.zeros((len(allk),2))
+feanum=pd.DataFrame.from_csv('/home/data/sensitive_disease/csm/results/chi2_onetoall/featurenumber.txt',header=-1,sep=' ')
 
-    s=np.zeros((len(allk),4))
-    res=load_obj(join(path,sc_func,str(case)+'_nonSD5pct_union_unify.pkl'))
-    for i,r in enumerate(res):
-        s[i]=r[0]
+# ctr_lab_feaset=pd.Series.from_csv(join(path,'nmset/labctrl_dx_match_nmset_300.csv')).index
+# ctr_pr_feaset=pd.Series.from_csv(join(path,'nmset/prctrl_dx_match_nmset_300.csv')).index
+# ctr_med_feaset=pd.Series.from_csv(join(path,'nmset/medctrl_dx_match_nmset_300.csv')).index
 
-    pd.DataFrame(s,index=index,columns=columns).to_csv(join(path,sc_func,'{}_both.csv'.format(case)))
+def plotsd(case,ctr='ctrl_dx_match',sc_func='chi2'):
+    pdf=PdfPages(join(path,'results',sc_func,'fig_{}.pdf'.format(case)))
 
-    prec[:,0]=s[:,0]
-    rec[:,0]=s[:,1]
-    f1[:,0]=s[:,2]
-    auc[:,0]=s[:,3]
+    res_union=load_obj(join(path,'results',sc_func,'{}_{}_union.pkl'.format(case,ctr)))
+    s_union=np.array(zip(*res_union)[0])
+    pd.DataFrame(s_union,index=index[:s_union.shape[0]],columns=columns).to_csv( \
+        join(path,'results',sc_func,'{}_both.csv'.format(case)))
+    
+    res_control=load_obj(join(path,'results',sc_func,'{}_{}_control.pkl'.format(case,ctr)))
+    s_control=np.array(zip(*res_control)[0])
+    pd.DataFrame(s_control,index=index[:s_control.shape[0]],columns=columns).to_csv( \
+        join(path,'results',sc_func,'{}_ctr.csv'.format(case)))
+    
+    res_intersect=load_obj(join(path,'results',sc_func,'{}_{}_intersect.pkl'.format(case,ctr)))
+    s_intersect=np.array(zip(*res_intersect)[0])
+    pd.DataFrame(s_intersect,index=index[:s_intersect.shape[0]],columns=columns).to_csv(  \
+        join(path,'results',sc_func,'{}_inter.csv'.format(case)))
 
-
-
-    s=np.zeros((len(allk),4))
-    res=load_obj(join(path,sc_func,str(case)+'_nonSD5pct_control_unify.pkl'))
-    for i,r in enumerate(res):
-        s[i]=r[0]
-
-    pd.DataFrame(s,index=index,columns=columns).to_csv(join(path,sc_func,'{}_ctr.csv'.format(case)))
-    prec[:,1]=s[:,0]
-    rec[:,1]=s[:,1]
-    f1[:,1]=s[:,2]
-    auc[:,1]=s[:,3]
-
-
-
-    plt.figure(1)
-    plt.plot(allk,prec[:,0],'r-')
-    plt.plot(allk,prec[:,1],'b--')
-    #plt.xlim( 0 )
-    plt.ylim( 0, 1 )
-    plt.legend(['both features','control features'])
-    plt.xlabel('Number of excluded top features')
-    plt.ylabel('Precision')
-    plt.title('ICD9 {}'.format(case))
-    pdf.savefig() 
-
-
-    plt.figure(2)
-    plt.plot(allk,rec[:,0],'r-')
-    plt.plot(allk,rec[:,1],'b--')
-    plt.ylim( 0, 1 )
-    plt.legend(['both features','control features'])
-    plt.xlabel('Number of excluded top features')
-    plt.ylabel('Recall')
-    plt.title('ICD9 {}'.format(case))
-    pdf.savefig() 
-
-
-    plt.figure(3)
-    plt.plot(allk,f1[:,0],'r-')
-    plt.plot(allk,f1[:,1],'b--')
-    plt.ylim( 0, 1 )
-    plt.legend(['both features','control features'])
-    plt.xlabel('Number of excluded top features')
-    plt.ylabel('F-measure')
-    plt.title('ICD9 {}'.format(case))
-    pdf.savefig() 
-
-
-    plt.figure(4)
-    plt.plot(allk,auc[:,0],'r-')
-    plt.plot(allk,auc[:,1],'b--')
-    plt.ylim( 0.5, 1 )
-    plt.legend(['both features','control features'])
-    plt.xlabel('Number of excluded top features')
-    plt.ylabel('AUC')
-    plt.title('ICD9 {}'.format(case))
-    pdf.savefig() 
+    # case_lab_feaset=pd.Series.from_csv(join(path,'nmset/lab{}_nmset_50.csv'.format(case))).index
+    # case_pr_feaset=pd.Series.from_csv(join(path,'nmset/pr{}_nmset_50.csv'.format(case))).index
+    # case_med_feaset=pd.Series.from_csv(join(path,'nmset/med{}_nmset_50.csv'.format(case))).index
+    # num_union=len(case_lab_feaset | ctr_lab_feaset)*2+len(case_pr_feaset | ctr_pr_feaset)+len(case_med_feaset | ctr_med_feaset)
+    # num_intersect=len(case_lab_feaset & ctr_lab_feaset)*2+len(case_pr_feaset & ctr_pr_feaset)+len(case_med_feaset & ctr_med_feaset)
+    # num_control=len( ctr_lab_feaset)*2+len( ctr_pr_feaset)+len( ctr_med_feaset)
+    #res=np.concatenate([s_union[...,None],s_control[...,None],s_intersect[...,None]],axis=2)
+    res=[s_union,s_control,s_intersect]
+    #res=[s_union]
+    
+    for j in range(4):
+        plt.figure(j)
+        plt.plot(allk[:res[0].shape[0]],res[0][:,j],'r-')
+        plt.plot(allk[:res[1].shape[0]],res[1][:,j],'b--')
+        plt.plot(allk[:res[2].shape[0]],res[2][:,j],'g:')
+        plt.ylim( 0.5, 1 ) if j==3 else plt.ylim( 0, 1 )
+        plt.legend(['union features ({})'.format(feanum.loc[str(case),4]),  \
+                    'control features ({})'.format(feanum.loc[str(case),2]), \
+                    'intersect features ({})'.format(feanum.loc[str(case),3])])
+        #plt.legend(['union features (2213)'])
+        plt.xlabel('Number of excluded top features')
+        plt.ylabel(metric[j])
+        plt.title('ICD9 {}'.format(case))
+        pdf.savefig()
+        
     pdf.close()
     plt.close('all')
+        
 
+
+#     plt.figure(1)
+#     plt.plot(allk,prec[:,0],'r-')
+#     plt.plot(allk,prec[:,1],'b--')
+#     #plt.xlim( 0 )
+#     plt.ylim( 0, 1 )
+#     plt.legend(['both features','control features'])
+#     plt.xlabel('Number of excluded top features')
+#     plt.ylabel('Precision')
+#     plt.title('ICD9 {}'.format(case))
+#     pdf.savefig() 
+
+
+#     plt.figure(2)
+#     plt.plot(allk,rec[:,0],'r-')
+#     plt.plot(allk,rec[:,1],'b--')
+#     plt.ylim( 0, 1 )
+#     plt.legend(['both features','control features'])
+#     plt.xlabel('Number of excluded top features')
+#     plt.ylabel('Recall')
+#     plt.title('ICD9 {}'.format(case))
+#     pdf.savefig() 
+
+
+#     plt.figure(3)
+#     plt.plot(allk,f1[:,0],'r-')
+#     plt.plot(allk,f1[:,1],'b--')
+#     plt.ylim( 0, 1 )
+#     plt.legend(['both features','control features'])
+#     plt.xlabel('Number of excluded top features')
+#     plt.ylabel('F-measure')
+#     plt.title('ICD9 {}'.format(case))
+#     pdf.savefig() 
+
+
+#     plt.figure(4)
+#     plt.plot(allk,auc[:,0],'r-')
+#     plt.plot(allk,auc[:,1],'b--')
+#     plt.ylim( 0.5, 1 )
+#     plt.legend(['both features','control features'])
+#     plt.xlabel('Number of excluded top features')
+#     plt.ylabel('AUC')
+#     plt.title('ICD9 {}'.format(case))
+#     pdf.savefig() 
+#     pdf.close()
+#     plt.close('all')
+
+def feacomp(case):
+    path='/home/data/sensitive_disease/csm/results'
+    res_chi2=load_obj(join(path,'chi2','{}_nonSD5pct_union_unify.pkl'.format(case)))
+    res_f=load_obj(join(path,'f_classif','{}_nonSD5pct_union_unify.pkl'.format(case)))
+    res_mi=load_obj(join(path,'mi_classif','{}_nonSD5pct_union_unify.pkl'.format(case)))
+    res_lr1=load_obj(join(path,'LR_classif1','{}_nonSD5pct_union_unify.pkl'.format(case)))
+    res_rd=load_obj(join(path,'random','{}_nonSD5pct_random_unify.pkl'.format(case)))
+    s_chi2=np.array(zip(*res_chi2)[0])
+    s_f=np.array(zip(*res_f)[0])
+    s_mi=np.array(zip(*res_mi)[0])
+    s_lr1=np.array(zip(*res_lr1)[0])
+    s_rd=np.array(zip(*res_rd)[0])
+    res=np.concatenate((s_chi2[...,None],s_f[...,None],s_mi[...,None],s_lr1[...,None],s_rd[...,None]),axis=2)
+
+    metric=['Precision','Recall','F-measure','AUC']
+    for j in range(res.shape[1]):
+        plt.figure(j,figsize=(8,6))
+        for i in range(res.shape[2]):
+            plt.plot(allk,res[:,j,i])
+    #    plt.ylim( 0, 1 )
+        plt.legend(['chi2','f_classif','mi_classif','LR1','random'])
+        plt.xlabel('Number of excluded top features')
+        plt.ylabel(metric[j])
+        plt.title('ICD9 {}'.format(case))
+
+    
 for c in cases:
-    print "printing figure for case "+str(c)
-    plotsd(c)
+    print "printing figure for case ",c
+    plotsd(c,ctr='allother_allctrl',sc_func='chi2_onetoall')
 
 
 
