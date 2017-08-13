@@ -7,6 +7,7 @@ import cPickle as pk
 import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
 from collections import Counter
+import matplotlib.pylab as pylab
 
 
 
@@ -26,17 +27,22 @@ cases=[257, 294, 296, 300, 303, 305, 307, 309, 311, 607, 608, 616, 623, 626, 628
 def plot_feasc(case,sc_func='chi2'):
     pdf=PdfPages(join(path,sc_func,'fea_score_{}.pdf'.format(case)))
     sc_union=load_obj(join(path,sc_func,str(case)+'fea_rank_allctrl_union.pkl'))
-    sc_control=load_obj(join(path,sc_func,str(case)+'fea_rank_allctrl_control.pkl'))
-    sc_intersect=load_obj(join(path,sc_func,str(case)+'fea_rank_allctrl_intersect.pkl'))
+    #sc_control=load_obj(join(path,sc_func,str(case)+'fea_rank_allctrl_control.pkl'))
+    #sc_intersect=load_obj(join(path,sc_func,str(case)+'fea_rank_allctrl_intersect.pkl'))
 
     plt.figure(1)
-    plt.plot(sc_union,'r-')
-    plt.plot(sc_control,'b--')
-    plt.plot(sc_intersect,'g:')
-    plt.legend(['union features','control features','intersect features'])
-    plt.title('ICD9 {}: Feature predictive score in descending order'.format(case))
-    plt.xlabel('Feature rank')
-    plt.ylabel('chi2 score')
+    plt.plot(sc_union,'r-',lw=4)
+    #plt.plot(sc_control,'b--',lw=2)
+    #plt.plot(sc_intersect,'g:',lw=2)
+    #plt.legend(['union features','control features','intersect features'],fontsize=15)
+    plt.legend(['union'],fontsize=20)
+    plt.title('ICD9 {}'.format(case),fontsize=20)
+    plt.xlabel('Feature rank',fontsize=20)
+    plt.ylabel('chi2 score',fontsize=20)
+    plt.yscale('log')
+    plt.xticks(fontsize=18)
+    plt.yticks(fontsize=18)
+    plt.tight_layout()
     pdf.savefig()
     pdf.close()
     plt.close('all')
@@ -48,6 +54,8 @@ def plot_fea_bar(case,ctr='ctrl_dx_match',sc_func='chi2'):
     # fea_control=load_obj(join(path,sc_func,'{}_{}_features_allctrl_control.pkl'.format(case,ctr)))
     # fea_intersect=load_obj(join(path,sc_func,'{}_{}_features_allctrl_intersect.pkl'.format(case,ctr)))
 
+    # params={'xtick.labelsize':12, 'ytick.labelsize':12}
+    # pylab.rcParams.update(params)
     for tp in ['union','control','intersect']:
         fea=load_obj(join(path,sc_func,'{}_{}_features_allctrl_{}.pkl'.format(case,ctr,tp)))
         fea_type=[x[:3] for x in fea]
@@ -60,12 +68,16 @@ def plot_fea_bar(case,ctr='ctrl_dx_match',sc_func='chi2'):
         plt.bar(ind, med,color='g',bottom=pro)
         plt.bar(ind, lab,color='b',bottom=np.array(med)+np.array(pro))
         plt.xticks(ind,allk[1:])
-        plt.legend(['Procedures','Medications','Labs'],loc=9,ncol=3)
-        plt.title('ICD9 {} Percentage of med, lab, procedure features in top features ({})'.format(case,tp))
-        plt.xlabel('Number of excluded top features')
-        plt.ylabel('Percentage (%)')
-        plt.ylim((0,111))
+        plt.legend(['Procedures','Medications','Labs'],loc=9,ncol=3,fontsize=14)
+        plt.title('ICD9 {} ({})'.format(case,tp),fontsize=18)
+        plt.xlabel('Number of excluded top features',fontsize=18)
+        plt.ylabel('Percentage (%)',fontsize=18)
+        plt.ylim((0,115))
         plt.yticks(np.arange(0, 101, 10))
+        # params={'xtick.labelsize':16, 'ytick.labelsize':16}
+        # pylab.rcParams.update(params)
+        plt.xticks(fontsize=18,rotation=45)
+        plt.tight_layout()
         pdf.savefig()
     
 
@@ -94,5 +106,5 @@ def plot_fea_bar(case,ctr='ctrl_dx_match',sc_func='chi2'):
 
 for c in cases:
     print 'printing',c
-    plot_feasc(c,sc_func='chi2_onetoall')
-    plot_fea_bar(c,sc_func='chi2_onetoall',ctr='allother')
+    plot_feasc(c,sc_func='chi2_onetoall_90')
+    #plot_fea_bar(c,sc_func='chi2_onetoall_90',ctr='allother')

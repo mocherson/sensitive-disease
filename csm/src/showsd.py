@@ -3,6 +3,7 @@ from os.path import join
 from os import listdir
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.pylab as pylab
 import cPickle as pk
 import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
@@ -19,6 +20,7 @@ index=['All']+['Excl '+str(x)+' best' for x in allk[1:]]
 columns=['Precision','Recall','F-measure','AUC']
 # cases=[311,632,654,644,658,616,303,655,623,661,765,608,646,652,257,663,300,296,659]
 cases=[257, 294, 296, 300, 303, 305, 307, 309, 311, 607, 608, 616, 623, 626, 628, 632, 640, 642, 644, 646, 648, 650, 652, 654, 655, 656, 658, 659, 661, 663, 664, 669, 765, 770, 774, 779]
+
 
 metric=['Precision','Recall','F-measure','AUC']
 
@@ -58,69 +60,26 @@ def plotsd(case,ctr='ctrl_dx_match',sc_func='chi2'):
     
     for j in range(4):
         plt.figure(j)
-        plt.plot(allk[:res[0].shape[0]],res[0][:,j],'r-')
-        plt.plot(allk[:res[1].shape[0]],res[1][:,j],'b--')
-        plt.plot(allk[:res[2].shape[0]],res[2][:,j],'g:')
+        plt.plot(allk[:res[0].shape[0]],res[0][:,j],'r-',lw=4)
+        plt.plot(allk[:res[1].shape[0]],res[1][:,j],'b--',lw=4)
+        plt.plot(allk[:res[2].shape[0]],res[2][:,j],'g:',lw=4)
         plt.ylim( 0.5, 1 ) if j==3 else plt.ylim( 0, 1 )
-        plt.legend(['union features ({})'.format(feanum.loc[str(case),4]),  \
-                    'control features ({})'.format(feanum.loc[str(case),2]), \
-                    'intersect features ({})'.format(feanum.loc[str(case),3])])
+        plt.legend(['union ({})'.format(feanum.loc[str(case),4]),  \
+                    'control ({})'.format(feanum.loc[str(case),2]), \
+                    'intersect ({})'.format(feanum.loc[str(case),3])],fontsize=20)
         #plt.legend(['union features (2213)'])
-        plt.xlabel('Number of excluded top features')
-        plt.ylabel(metric[j])
-        plt.title('ICD9 {}'.format(case))
+        plt.xlabel('Number of excluded top features',fontsize=20)
+        plt.ylabel(metric[j],fontsize=20)
+        plt.title('ICD9 {}'.format(case),fontsize=20)
+        params={'xtick.labelsize':18,
+         'ytick.labelsize':18}
+        pylab.rcParams.update(params)
+        plt.tight_layout()
         pdf.savefig()
         
     pdf.close()
     plt.close('all')
         
-
-
-#     plt.figure(1)
-#     plt.plot(allk,prec[:,0],'r-')
-#     plt.plot(allk,prec[:,1],'b--')
-#     #plt.xlim( 0 )
-#     plt.ylim( 0, 1 )
-#     plt.legend(['both features','control features'])
-#     plt.xlabel('Number of excluded top features')
-#     plt.ylabel('Precision')
-#     plt.title('ICD9 {}'.format(case))
-#     pdf.savefig() 
-
-
-#     plt.figure(2)
-#     plt.plot(allk,rec[:,0],'r-')
-#     plt.plot(allk,rec[:,1],'b--')
-#     plt.ylim( 0, 1 )
-#     plt.legend(['both features','control features'])
-#     plt.xlabel('Number of excluded top features')
-#     plt.ylabel('Recall')
-#     plt.title('ICD9 {}'.format(case))
-#     pdf.savefig() 
-
-
-#     plt.figure(3)
-#     plt.plot(allk,f1[:,0],'r-')
-#     plt.plot(allk,f1[:,1],'b--')
-#     plt.ylim( 0, 1 )
-#     plt.legend(['both features','control features'])
-#     plt.xlabel('Number of excluded top features')
-#     plt.ylabel('F-measure')
-#     plt.title('ICD9 {}'.format(case))
-#     pdf.savefig() 
-
-
-#     plt.figure(4)
-#     plt.plot(allk,auc[:,0],'r-')
-#     plt.plot(allk,auc[:,1],'b--')
-#     plt.ylim( 0.5, 1 )
-#     plt.legend(['both features','control features'])
-#     plt.xlabel('Number of excluded top features')
-#     plt.ylabel('AUC')
-#     plt.title('ICD9 {}'.format(case))
-#     pdf.savefig() 
-#     pdf.close()
-#     plt.close('all')
 
 def feacomp(case):
     path='/home/data/sensitive_disease/csm/results'
@@ -147,10 +106,11 @@ def feacomp(case):
         plt.ylabel(metric[j])
         plt.title('ICD9 {}'.format(case))
 
+
     
 for c in cases:
     print "printing figure for case ",c
-    plotsd(c,ctr='allother_allctrl',sc_func='chi2_onetoall')
+    plotsd(c,ctr='allother_allctrl',sc_func='chi2_onetoall_90')
 
 
 
